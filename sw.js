@@ -1,5 +1,5 @@
 /* 极简离线缓存 */
-const CACHE = 'lumo-lite-v2';
+const CACHE = 'lumo-lite-v3';
 const ASSETS = [
   './',
   './index.html',
