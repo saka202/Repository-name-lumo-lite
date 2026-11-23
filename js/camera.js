@@ -10,8 +10,9 @@ window.Camera = (function () {
       audio: false,
       video: {
         facingMode: { ideal: facing },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
+        // 尽量要高分辨率：变焦后裁切仍有料
+        width: { ideal: 3840 },
+        height: { ideal: 2160 },
         frameRate: { ideal: 30 }
       }
     };

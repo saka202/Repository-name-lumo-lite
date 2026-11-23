@@ -15,6 +15,9 @@
     planId: 'A',
     grid: 'thirds',
     roll: 0,
+    zoom: 1,
+    hardwareZoom: false,
+    zoomHintShown: false,
     faceRaw: null,
     faceSmooth: null,
     faceScreen: null,
@@ -42,7 +45,8 @@
     const { cw, ch } = canvasSize();
     const vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return n;
-    const scale = Math.max(cw / vw, ch / vh);
+    const zoom = state.hardwareZoom ? 1 : state.zoom;
+    const scale = Math.max(cw / vw, ch / vh) * zoom;
     const dw = vw * scale, dh = vh * scale;
     const ox = (cw - dw) / 2, oy = (ch - dh) / 2;
     return {
@@ -51,6 +55,46 @@
       w: (n.w * vw * scale) / cw,
       h: (n.h * vh * scale) / ch
     };
+  }
+
+  /* ---------------- 变焦 ---------------- */
+
+  async function tryHardwareZoom(z) {
+    const track = Camera.track();
+    if (!track) return false;
+    let caps = null;
+    try { caps = track.getCapabilities ? track.getCapabilities() : null; } catch (e) { return false; }
+    if (!caps || !caps.zoom) return false;
+    const { min, max } = caps.zoom;
+    const target = z < min ? min : Math.min(max, z);
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: target }] });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function setZoom(z) {
+    if (state.zoom === z) return;
+    state.zoom = z;
+    $$('.zoom').forEach(b => b.classList.toggle('active', Number(b.dataset.zoom) === z));
+
+    const hw = await tryHardwareZoom(z);
+    state.hardwareZoom = hw;
+    video.style.transform = hw ? 'none' : 'scale(' + z + ')';
+
+    if (!hw && z > 1 && !state.zoomHintShown) {
+      state.zoomHintShown = true;
+      toast('这台机器的浏览器不支持硬件变焦，用的是画面裁切，放大后画质会降一点', 3600);
+    }
+  }
+
+  function resetZoom() {
+    state.zoom = 1;
+    state.hardwareZoom = false;
+    video.style.transform = 'none';
+    $$('.zoom').forEach(b => b.classList.toggle('active', Number(b.dataset.zoom) === 1));
   }
 
   function smooth(prev, next, a) {
@@ -283,11 +327,14 @@
     const { cw, ch } = canvasSize();
     if (!vw || !vh || !cw || !ch) return null;
 
+    const zoom = state.hardwareZoom ? 1 : state.zoom;
     const screenAR = cw / ch;
     const videoAR = vw / vh;
     let sw, sh;
     if (videoAR > screenAR) { sh = vh; sw = vh * screenAR; }
     else { sw = vw; sh = vw / screenAR; }
+    sw /= zoom;
+    sh /= zoom;
     const sx = (vw - sw) / 2;
     const sy = (vh - sh) / 2;
 
@@ -390,6 +437,7 @@
     const ok = await startCamera();
     if (!ok) { showScreen('intro'); return; }
 
+    resetZoom();
     buildCandidates();
 
     toast('正在加载识别模型…', 2600);
@@ -424,11 +472,16 @@
         await Camera.flip(video);
         await waitForVideo();
         Overlay.resize(overlayCanvas);
+        resetZoom();
         startLoop();
       } catch (e) {
         toast('切镜头失败');
         startLoop();
       }
+    });
+
+    $$('.zoom').forEach(btn => {
+      btn.addEventListener('click', () => setZoom(Number(btn.dataset.zoom)));
     });
 
     $('#gridBtn').addEventListener('click', () => {
