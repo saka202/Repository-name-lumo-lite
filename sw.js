@@ -1,5 +1,5 @@
 ﻿/* 鏋佺畝绂荤嚎缂撳瓨 */
-const CACHE = 'lumo-lite-v4';
+const CACHE = 'lumo-lite-v5';
 const ASSETS = [
   './',
   './index.html',

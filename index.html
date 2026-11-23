@@ -32,8 +32,10 @@
 
 <!-- ---------- 取景 ---------- -->
 <section id="viewfinder" class="screen hidden">
-  <video id="video" playsinline autoplay muted></video>
-  <canvas id="overlay"></canvas>
+  <div id="stage">
+    <video id="video" playsinline autoplay muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
 
   <div class="topbar">
     <div class="tabs">
@@ -52,11 +54,11 @@
         <button class="scene" data-scene="architecture" type="button">建筑</button>
       </div>
       <div class="zooms" id="zooms">
-        <button class="zoom" data-zoom="0.6" type="button">.6</button>
-        <button class="zoom active" data-zoom="1" type="button">1x</button>
-        <button class="zoom" data-zoom="2" type="button">2x</button>
-        <button class="zoom" data-zoom="3" type="button">3x</button>
-        <button class="zoom" data-zoom="5" type="button">5x</button>
+        <button class="zoom" data-mm="14" type="button">14</button>
+        <button class="zoom active" data-mm="24" type="button">24</button>
+        <button class="zoom" data-mm="48" type="button">48</button>
+        <button class="zoom" data-mm="73" type="button">73</button>
+        <button class="zoom" data-mm="120" type="button">120</button>
       </div>
     </div>
     <div id="candidates" class="candidates"></div>
