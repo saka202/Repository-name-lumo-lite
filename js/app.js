@@ -8,6 +8,7 @@
   const video = $('#video');
   const overlayCanvas = $('#overlay');
   const adviceEl = $('#advice');
+  const stage = $('#stage');
 
   const state = {
     scene: 'portrait',
@@ -16,6 +17,7 @@
     grid: 'thirds',
     roll: 0,
     zoom: 1,
+    mm: 24,
     hardwareZoom: false,
     zoomHintShown: false,
     faceRaw: null,
@@ -41,19 +43,32 @@
     return { cw: r.width, ch: r.height };
   }
 
-  function videoToScreenNorm(n) {
-    const { cw, ch } = canvasSize();
+  const BASE_MM = 24;   // 把摄像头的 1x 当 24mm 主摄
+
+  /**
+   * stage 就是"视频的显示区域"：按视频原始比例居中摆放，不裁、不裁、不裁视野。
+   * 于是视频内部坐标 ≈ stage 内坐标，只差一个以中心为原点的变焦缩放。
+   */
+  function layoutStage() {
     const vw = video.videoWidth, vh = video.videoHeight;
-    if (!vw || !vh) return n;
-    const zoom = state.hardwareZoom ? 1 : state.zoom;
-    const scale = Math.max(cw / vw, ch / vh) * zoom;
-    const dw = vw * scale, dh = vh * scale;
-    const ox = (cw - dw) / 2, oy = (ch - dh) / 2;
+    if (!vw || !vh) return;
+    const W = window.innerWidth, H = window.innerHeight;
+    const scale = Math.min(W / vw, H / vh);
+    const dw = Math.round(vw * scale), dh = Math.round(vh * scale);
+    stage.style.width = dw + 'px';
+    stage.style.height = dh + 'px';
+    stage.style.left = Math.round((W - dw) / 2) + 'px';
+    stage.style.top = Math.round((H - dh) / 2) + 'px';
+    Overlay.resize(overlayCanvas);
+  }
+
+  function videoToScreenNorm(n) {
+    const z = state.hardwareZoom ? 1 : state.zoom;
     return {
-      x: (ox + n.x * vw * scale) / cw,
-      y: (oy + n.y * vh * scale) / ch,
-      w: (n.w * vw * scale) / cw,
-      h: (n.h * vh * scale) / ch
+      x: (n.x - 0.5) * z + 0.5,
+      y: (n.y - 0.5) * z + 0.5,
+      w: n.w * z,
+      h: n.h * z
     };
   }
 
@@ -80,12 +95,17 @@
 
   function syncZoomUI() {
     $$('.zoom').forEach(b => {
-      b.classList.toggle('active', Math.abs(Number(b.dataset.zoom) - state.zoom) < 0.001);
+      b.classList.toggle('active', Math.abs(Number(b.dataset.mm) - state.mm) < 0.6);
     });
   }
 
-  async function setZoom(z) {
-    if (Math.abs(state.zoom - z) < 0.001) return;
+  async function setZoom(mm) {
+    if (Math.abs(state.mm - mm) < 0.6) return;
+    const z = mm / BASE_MM;
+    const prevMm = state.mm;
+    const prevZoom = state.zoom;
+
+    state.mm = mm;
     state.zoom = z;
     syncZoomUI();
 
@@ -98,23 +118,25 @@
     }
 
     if (z < 1) {
-      // 超广角没拿到，退回 1x，别硬裁一个更小的视野出来
+      // 超广角拿不到，退回 24mm，别硬裁出一个更窄的视野
+      state.mm = BASE_MM;
       state.zoom = 1;
       state.hardwareZoom = false;
       video.style.transform = 'none';
       syncZoomUI();
-      toast('浏览器调不到超广角，先停在 1x', 2600);
+      toast('浏览器调不到超广角，先停在 24mm', 2800);
       return;
     }
 
     video.style.transform = 'scale(' + z + ')';
-    if (z > 1 && !state.zoomHintShown) {
+    if (z > 1.02 && !state.zoomHintShown) {
       state.zoomHintShown = true;
-      toast('调用的是硬件变焦；如果这台机器不给，会退成画面裁切', 3000);
+      toast('这台浏览器不给硬件变焦，走的是画面裁切，画质会降一点', 3400);
     }
   }
 
   function resetZoom() {
+    state.mm = BASE_MM;
     state.zoom = 1;
     state.hardwareZoom = false;
     video.style.transform = 'none';
@@ -321,7 +343,7 @@
     try {
       await Camera.start(video);
       await waitForVideo();
-      Overlay.resize(overlayCanvas);
+      layoutStage();
       return true;
     } catch (e) {
       console.error(e);
@@ -348,17 +370,10 @@
 
   function capture() {
     const vw = video.videoWidth, vh = video.videoHeight;
-    const { cw, ch } = canvasSize();
-    if (!vw || !vh || !cw || !ch) return null;
+    if (!vw || !vh) return null;
 
-    const zoom = state.hardwareZoom ? 1 : state.zoom;
-    const screenAR = cw / ch;
-    const videoAR = vw / vh;
-    let sw, sh;
-    if (videoAR > screenAR) { sh = vh; sw = vh * screenAR; }
-    else { sw = vw; sh = vw / screenAR; }
-    sw /= zoom;
-    sh /= zoom;
+    const z = state.hardwareZoom ? 1 : state.zoom;
+    const sw = vw / z, sh = vh / z;
     const sx = (vw - sw) / 2;
     const sy = (vh - sh) / 2;
 
@@ -495,7 +510,7 @@
         stopLoop();
         await Camera.flip(video);
         await waitForVideo();
-        Overlay.resize(overlayCanvas);
+        layoutStage();
         resetZoom();
         startLoop();
       } catch (e) {
@@ -505,7 +520,7 @@
     });
 
     $$('.zoom').forEach(btn => {
-      btn.addEventListener('click', () => setZoom(Number(btn.dataset.zoom)));
+      btn.addEventListener('click', () => setZoom(Number(btn.dataset.mm)));
     });
 
     $('#gridBtn').addEventListener('click', () => {
@@ -528,7 +543,7 @@
       });
     });
 
-    window.addEventListener('resize', () => Overlay.resize(overlayCanvas));
+    window.addEventListener('resize', () => layoutStage());
     window.addEventListener('deviceorientation', onOrientation, true);
 
     document.addEventListener('visibilitychange', () => {

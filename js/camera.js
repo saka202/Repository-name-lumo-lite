@@ -6,25 +6,16 @@ window.Camera = (function () {
   let facing = 'environment';
 
   function constraints() {
-    const portrait = window.innerHeight >= window.innerWidth;
     return {
       audio: false,
-      video: portrait
-        ? {
-            // 竖着拿：直接要竖幅，避免宽幅流被竖屏 cover 裁掉一半视野
-            facingMode: { ideal: facing },
-            width: { ideal: 1080 },
-            height: { ideal: 1920 },
-            aspectRatio: { ideal: 1080 / 1920 },
-            frameRate: { ideal: 30 }
-          }
-        : {
-            facingMode: { ideal: facing },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            aspectRatio: { ideal: 1920 / 1080 },
-            frameRate: { ideal: 30 }
-          }
+      video: {
+        facingMode: { ideal: facing },
+        // 4:3 是传感器全视野，用它能拿到和原生相机 1x 一样的视场角
+        width: { ideal: 1440 },
+        height: { ideal: 1080 },
+        aspectRatio: { ideal: 1440 / 1080 },
+        frameRate: { ideal: 30 }
+      }
     };
   }
 
