@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0a0a0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>灵感构图</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ---------- 开场 ---------- -->
+<section id="intro" class="screen">
+  <div class="intro-inner">
+    <div class="badge">轻量版</div>
+    <h1>灵感构图</h1>
+    <p class="sub">实时取景 · 实时提示 · 不联网也能用</p>
+    <ul class="feat">
+      <li><i></i>三分线 / 黄金分割 / 水平仪</li>
+      <li><i></i>认出人脸，画框提示</li>
+      <li><i></i>两套构图方案随手切</li>
+    </ul>
+    <button id="startBtn" class="primary">开始取景</button>
+    <p class="tiny">需要摄像头权限，画面只在你手机本地处理</p>
+  </div>
+</section>
+
+<!-- ---------- 取景 ---------- -->
+<section id="viewfinder" class="screen hidden">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="overlay"></canvas>
+
+  <div class="topbar">
+    <div class="tabs">
+      <button class="tab active" data-mode="guide">灵感构图</button>
+      <button class="tab" data-mode="pose">灵感推荐</button>
+    </div>
+    <button id="closeBtn" class="round" aria-label="关闭">✕</button>
+  </div>
+
+  <div id="advice" class="advice"><span></span></div>
+
+  <div class="bottombar">
+    <div class="scenes" id="scenes">
+      <button class="scene active" data-scene="portrait" type="button">人像</button>
+      <button class="scene" data-scene="architecture" type="button">建筑</button>
+    </div>
+    <div id="candidates" class="candidates"></div>
+    <div class="shutter-row">
+      <button id="flipBtn" class="round" aria-label="切换镜头">⟳</button>
+      <button id="shutter" class="shutter" aria-label="拍照"></button>
+      <button id="gridBtn" class="round" aria-label="切换参考线">⌗</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</section>
+
+<!-- ---------- 结果 ---------- -->
+<section id="result" class="screen hidden">
+  <div class="result-wrap">
+    <img id="resultImg" alt="拍好的照片">
+  </div>
+  <div class="result-bar">
+    <button id="retakeBtn" class="ghost">再拍一张</button>
+    <button id="saveBtn" class="primary">保存到相册</button>
+  </div>
+</section>
+
+<script src="vendor/face-api.js"></script>
+<script src="js/advisor.js"></script>
+<script src="js/detect.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/overlay.js"></script>
+<script src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
