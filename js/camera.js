@@ -6,15 +6,25 @@ window.Camera = (function () {
   let facing = 'environment';
 
   function constraints() {
+    const portrait = window.innerHeight >= window.innerWidth;
     return {
       audio: false,
-      video: {
-        facingMode: { ideal: facing },
-        // 尽量要高分辨率：变焦后裁切仍有料
-        width: { ideal: 3840 },
-        height: { ideal: 2160 },
-        frameRate: { ideal: 30 }
-      }
+      video: portrait
+        ? {
+            // 竖着拿：直接要竖幅，避免宽幅流被竖屏 cover 裁掉一半视野
+            facingMode: { ideal: facing },
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            aspectRatio: { ideal: 1080 / 1920 },
+            frameRate: { ideal: 30 }
+          }
+        : {
+            facingMode: { ideal: facing },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            aspectRatio: { ideal: 1920 / 1080 },
+            frameRate: { ideal: 30 }
+          }
     };
   }
 

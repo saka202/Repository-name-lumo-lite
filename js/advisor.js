@@ -9,14 +9,14 @@ window.Advisor = (function () {
       {
         id: 'A',
         name: '三分',
-        desc: '人放右侧三分线',
+        desc: '人贴右侧三分线，视线方向留白',
         guide: { x: 0.50, y: 0.10, w: 0.46, h: 0.80 },
         crop: { x: 0.28, y: 0.02, w: 0.72, h: 0.96 }
       },
       {
         id: 'B',
         name: '中心',
-        desc: '人放画面正中',
+        desc: '人放正中，适合干净背景',
         guide: { x: 0.16, y: 0.06, w: 0.68, h: 0.86 },
         crop: { x: 0.10, y: 0.00, w: 0.80, h: 1.00 }
       }
@@ -25,14 +25,14 @@ window.Advisor = (function () {
       {
         id: 'A',
         name: '对称',
-        desc: '主体居中，左右对称',
+        desc: '镜头正对中轴，左右分毫不差',
         guide: { x: 0.20, y: 0.10, w: 0.60, h: 0.78 },
         crop: { x: 0.12, y: 0.00, w: 0.76, h: 1.00 }
       },
       {
         id: 'B',
         name: '三分',
-        desc: '主体靠右，上方留天空',
+        desc: '楼放右侧三分线，天空留上方',
         guide: { x: 0.46, y: 0.16, w: 0.44, h: 0.70 },
         crop: { x: 0.28, y: 0.06, w: 0.70, h: 0.92 }
       }
@@ -77,8 +77,8 @@ window.Advisor = (function () {
     const tilt = Math.abs(roll) > 4.5;
 
     if (!o.face) {
-      if (tilt) return { level: 'warn', text: '手机有点歪，先摆正（' + Math.round(roll) + '°）', guide, inside: false, scene: 'portrait', target: null };
-      return { level: 'idle', text: '把人对进画面里，小布帮你看', guide, inside: false, scene: 'portrait', target: null };
+      if (tilt) return { level: 'warn', text: '手机歪了 ' + Math.round(Math.abs(roll)) + '° · 摆正再看', guide, inside: false, scene: 'portrait', target: null };
+      return { level: 'idle', text: '把人对进画面 · 小布帮你看三分线', guide, inside: false, scene: 'portrait', target: null };
     }
 
     const face = o.face;
@@ -86,34 +86,43 @@ window.Advisor = (function () {
     const target = targetFace(guide, face);
 
     if (tilt) {
-      return { level: 'warn', text: '手机歪了 ' + Math.round(Math.abs(roll)) + '°，摆正再拍', guide, inside: ok, scene: 'portrait', target };
+      return { level: 'warn', text: '手机歪了 ' + Math.round(Math.abs(roll)) + '° · 摆正再按', guide, inside: ok, scene: 'portrait', target };
     }
 
     if (ok) {
-      return { level: 'good', text: '构图到位了，按快门', guide, inside: true, scene: 'portrait', target };
+      return { level: 'good', text: '三分线卡住了 · 按快门', guide, inside: true, scene: 'portrait', target };
     }
 
     if (face.w < 0.10) {
-      return { level: 'hint', text: '人有点小，走近两步', guide, inside: false, scene: 'portrait', target };
+      return { level: 'hint', text: '人有点小 · 走近两步', guide, inside: false, scene: 'portrait', target };
     }
     if (face.w > 0.52) {
-      return { level: 'hint', text: '离太近啦，往后退一点', guide, inside: false, scene: 'portrait', target };
+      return { level: 'hint', text: '离太近 · 退后半步', guide, inside: false, scene: 'portrait', target };
     }
 
-    const gc = { x: guide.x + guide.w / 2, y: guide.y + guide.h / 2 };
     const fc = { x: face.x + face.w / 2, y: face.y + face.h / 2 };
+
+    // 头顶空间
+    if (face.y < guide.y - 0.02) {
+      return { level: 'hint', text: '头顶太挤 · 手机往下沉一点', guide, inside: false, scene: 'portrait', target };
+    }
+
+    // 居中方案下，人在正中反而是对的；三分方案下才提示别放中间
+    const gc = { x: guide.x + guide.w / 2, y: guide.y + guide.h / 2 };
     const dx = gc.x - fc.x;
     const dy = gc.y - fc.y;
 
+    if (o.planId === 'A' && Math.abs(fc.x - 0.5) < 0.07) {
+      return { level: 'hint', text: '别放正中间 · 往右让半步', guide, inside: false, scene: 'portrait', target };
+    }
+
     let text;
-    if (Math.abs(dx) > Math.abs(dy) * 1.2) {
-      text = dx > 0 ? '人物偏左，手机往左带一点' : '人物偏右，手机往右带一点';
+    if (Math.abs(dx) > Math.abs(dy) * 1.15) {
+      text = dx > 0 ? '人偏左 · 往右让半步，视线那边留空' : '人偏右 · 往左让半步';
     } else if (Math.abs(dy) > 0.07) {
-      text = dy > 0 ? '人物偏上，手机往下压一点' : '人物偏下，手机往上抬一点';
-    } else if (face.y < guide.y) {
-      text = '头顶太满，手机往下压一点';
+      text = dy > 0 ? '人偏上 · 手机抬高一点' : '人偏下 · 手机压低一点';
     } else {
-      text = '再挪一点点';
+      text = '再挪一点点 · 让眼睛落到上三分线';
     }
     return { level: 'hint', text, guide, inside: false, scene: 'portrait', target };
   }
@@ -126,24 +135,28 @@ window.Advisor = (function () {
     const sky = a.skyRatio == null ? null : a.skyRatio;
 
     const tilt = Math.abs(roll) > 3;
-    const notes = [];
+    let text = null;
 
     if (tilt) {
-      notes.push('手往' + (roll > 0 ? '左' : '右') + '转 ' + Math.abs(roll).toFixed(1) + '°，让楼体竖线跟画面边平行');
+      text = '左歪 ' + Math.abs(roll).toFixed(1) + '° · 摆正让楼体竖线跟边平行';
+      if (roll < 0) text = '右歪 ' + Math.abs(roll).toFixed(1) + '° · 摆正让楼体竖线跟边平行';
+    } else if (sky != null && sky > 0.55) {
+      text = '天空太多 · 往下压一点，让楼占满下半';
+    } else if (sky != null && sky < 0.08) {
+      text = '顶上没空间 · 往上抬，给楼留口气';
     }
 
-    if (sky != null) {
-      if (sky > 0.55) notes.push('天空占太多，往下压一点');
-      else if (sky < 0.08) notes.push('顶上没空间了，往上抬一点');
-    }
-
-    if (notes.length === 0) {
-      return { level: 'good', text: '横平竖直，构图稳了，按快门', guide, inside: true, scene: 'architecture', target: null };
+    if (!text) {
+      if (sky == null) {
+        text = '把楼的主体对进框里 · 镜头正对中轴';
+        return { level: 'idle', text, guide, inside: false, scene: 'architecture', target: null };
+      }
+      return { level: 'good', text: '横平竖直 · 拍吧', guide, inside: true, scene: 'architecture', target: null };
     }
 
     return {
       level: tilt ? 'warn' : 'hint',
-      text: notes[0],
+      text,
       guide,
       inside: !tilt,
       scene: 'architecture',

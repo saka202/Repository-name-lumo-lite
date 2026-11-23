@@ -66,27 +66,51 @@
     try { caps = track.getCapabilities ? track.getCapabilities() : null; } catch (e) { return false; }
     if (!caps || !caps.zoom) return false;
     const { min, max } = caps.zoom;
-    const target = z < min ? min : Math.min(max, z);
+    if (z < min - 0.001) return false;   // 超出设备能力，别假装成功
+    const target = Math.min(max, Math.max(min, z));
     try {
       await track.applyConstraints({ advanced: [{ zoom: target }] });
-      return true;
+      // 回读确认，防止某些设备"接受但不生效"
+      const applied = track.getSettings ? track.getSettings().zoom : target;
+      return typeof applied === 'number' ? Math.abs(applied - target) < 0.2 : true;
     } catch (e) {
       return false;
     }
   }
 
+  function syncZoomUI() {
+    $$('.zoom').forEach(b => {
+      b.classList.toggle('active', Math.abs(Number(b.dataset.zoom) - state.zoom) < 0.001);
+    });
+  }
+
   async function setZoom(z) {
-    if (state.zoom === z) return;
+    if (Math.abs(state.zoom - z) < 0.001) return;
     state.zoom = z;
-    $$('.zoom').forEach(b => b.classList.toggle('active', Number(b.dataset.zoom) === z));
+    syncZoomUI();
 
-    const hw = await tryHardwareZoom(z);
-    state.hardwareZoom = hw;
-    video.style.transform = hw ? 'none' : 'scale(' + z + ')';
+    const ok = await tryHardwareZoom(z);
+    state.hardwareZoom = ok;
 
-    if (!hw && z > 1 && !state.zoomHintShown) {
+    if (ok) {
+      video.style.transform = 'none';
+      return;
+    }
+
+    if (z < 1) {
+      // 超广角没拿到，退回 1x，别硬裁一个更小的视野出来
+      state.zoom = 1;
+      state.hardwareZoom = false;
+      video.style.transform = 'none';
+      syncZoomUI();
+      toast('浏览器调不到超广角，先停在 1x', 2600);
+      return;
+    }
+
+    video.style.transform = 'scale(' + z + ')';
+    if (z > 1 && !state.zoomHintShown) {
       state.zoomHintShown = true;
-      toast('这台机器的浏览器不支持硬件变焦，用的是画面裁切，放大后画质会降一点', 3600);
+      toast('调用的是硬件变焦；如果这台机器不给，会退成画面裁切', 3000);
     }
   }
 
@@ -94,7 +118,7 @@
     state.zoom = 1;
     state.hardwareZoom = false;
     video.style.transform = 'none';
-    $$('.zoom').forEach(b => b.classList.toggle('active', Number(b.dataset.zoom) === 1));
+    syncZoomUI();
   }
 
   function smooth(prev, next, a) {
